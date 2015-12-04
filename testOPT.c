@@ -1,6 +1,16 @@
+/******************************************************************
+Brandon Brien
+10079883
+
+Code is based off of the reading and writing file given in 
+tutorials.
+
+******************************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <time.h>
 #include "fft.c"
 
 char chunkID[4];
@@ -115,7 +125,7 @@ int loadWave(char* filename)
 		float scaledSample;
 		while(fread(&sample, 1, bytesPerSample, in) == bytesPerSample)
 		{	
-			scaledSample = (float) sample/32767/8;
+			scaledSample = (float) sample/32767/80;
 			data[i++] = scaledSample;
 			//printf("%lf ", scaledSample);
 			//printf("%lf ", data[i-1]);
@@ -169,14 +179,13 @@ void convolve(float x[], int N, float h[], int M, float y[], int P)
 
   /*  Do the convolution  */
   /*  Outer loop:  process each input value x[n] in turn  */
-  	float max = 0;
-	float min = 0;
   for (n = 0; n < N; n++) {
     /*  Inner loop:  process x[n] with each sample of h[]  */
     for (m = 0; m < M; m++)
 	{
       y[n+m] += x[n] * h[m];
 	 }
+	 //printf("Hi");
   }
 }
 
@@ -187,7 +196,7 @@ int saveWave(char* filename)
 
 	if (out != NULL)
 	{		
-		printf("Writing %s...\n",filename);
+		//printf("Writing %s...\n",filename);
 
 		fwrite(chunkID, 1, 4, out);
 		fwrite(&chunkSize, 1, 4, out);
@@ -242,7 +251,7 @@ int saveWave(char* filename)
 		//clean up
 		free(resultData);
 		fclose(out);
-		printf("Closing %s...\n",filename);
+		//printf("Closing %s...\n",filename);
 	}
 	else
 	{
@@ -256,6 +265,12 @@ int saveWave(char* filename)
 int main(int argc, char* argv[])
 {
 	//char* filename = argv[1];
+	//Used to measure overall time from read to write
+	clock_t totalTime = clock(); 
+	clock_t end;
+	float seconds;
+	
+	
 	
 	char* filename = "GuitarDry.wav";
 	if(loadWave(filename))
@@ -263,6 +278,7 @@ int main(int argc, char* argv[])
 		
 	dryData = data;	
 	dryDataSize = subChunk2Size/2; //Size of the data (number of entries)  = chunk size /numSamples (2)
+	
 	
 	/* 
 		Creating the double array.
@@ -294,7 +310,7 @@ int main(int argc, char* argv[])
 		dubDryData[i] = 0;
 	}
 	
-	
+
 	
 	/* ------------------------------------------------------------------------------------- */
 	/* Impulse Response Stuff */
@@ -306,6 +322,7 @@ int main(int argc, char* argv[])
 	irData = data;
 	irDataSize = subChunk2Size/2; //Size of the data = chunk size /numSamples (2)
 	
+
 	/* 
 		Creating the double array.
 		The size needs to be a power of two, and it needs to be padded with zeros 
@@ -336,19 +353,74 @@ int main(int argc, char* argv[])
 		dubIRData[j] = 0;
 	}
 	
-	
-	
-	
 	/* ------------------------------------------------------------------------------------- */
 	/* Data array for the convolution to fill */
 	sizeOfResult = (sizeOfResult/2) -1; //Size of result = (chuck size dry + chunk size)/2 then subtract 1
 
-	/* Slow convolution */
-	resultData = (float*) malloc(sizeof(float) * sizeOfResult);
-	convolve(dryData, dryDataSize, irData, irDataSize, resultData, sizeOfResult);
 	
+	/* 
+		Fast convolution 
+	*/
+	
+	//Already have the double array of dryData right here 
+	
+	/* The FFT version of dryData is now in dubDryData */
+	
+	
+	clock_t convolutionTime = clock(); 
+	
+	clock_t fftTime = clock();
+	four1(dubDryData-1, sizeOfDubDry/2, 1);
+	end = clock();
+	seconds = (float)(end - fftTime) / CLOCKS_PER_SEC;
+	printf("\n\tFFT Dry Data Time: %.4f(s)", seconds);
+	
+	fftTime = clock();
+	four1(dubIRData-1, sizeOfDubDry/2, 1);
+	end = clock();
+	seconds = (float)(end - fftTime) / CLOCKS_PER_SEC;
+	printf("\n\tFFT Impulse Response Data Time: %.4f(s)", seconds);
+	
+	
+		/* All the numbers seem to be fine up to here */
+
+	double* resultDubData = (double*) malloc(sizeof(double)* sizeOfDubDry);
+	
+	//Now have the result data FFT
+	for(int k = 0;k<sizeOfDubDry;k+=2)
+	{
+		//k = real
+		//k+1 = imaginary 
+		resultDubData[k] = (dubDryData[k]*dubIRData[k]) - (dubDryData[k+1]*dubIRData[k+1]);
+		resultDubData[k+1] = (dubDryData[k+1]*dubIRData[k]) + (dubDryData[k]*dubIRData[k+1]) ;
+	}
+	
+	//Now have it back in time domain
+	four1(resultDubData-1, sizeOfDubDry/2, -1);
+	
+	
+	end = clock();
+	seconds = (float)(end - convolutionTime) / CLOCKS_PER_SEC;
+	printf("\nTime to finish FFT x2 and Convolution: %.4f(s)", seconds);
+	
+	free(resultData);
+	
+	resultData = (float*) malloc(sizeof(float)* sizeOfDubDry);
+	
+	//Gets the resulting data back into a float array
+	for(int k =0;k<sizeOfDubDry;k++)
+	{
+		resultData[k] = (float) (resultDubData[k]/32767.f);
+	}
+	
+	//Now we can write it to the wav file
 	
 
-	saveWave("unop.wav");
+	saveWave("out.wav");
 	free(data);
+	
+	end = clock();
+	seconds = (float)(end - totalTime) / CLOCKS_PER_SEC;
+	printf("\nOverall Run time: %.4f(s)", seconds);
+	
 }
