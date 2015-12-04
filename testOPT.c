@@ -63,6 +63,7 @@ size_t fwriteShortLSB(short int data, FILE *stream);
 
 void print()
 {
+	/*
 	printf("\n============= HEADER INFO =============\n", chunkID);
 	printf(" chunkID:%s\n", chunkID);
 	printf(" chunkSize:%d\n", chunkSize);
@@ -77,6 +78,7 @@ void print()
 	printf(" bitsPerSample:%d\n", bitsPerSample);
 	printf(" subChunk2ID:%s\n", subChunk2ID);
 	printf(" subChunk2Size:%d\n", subChunk2Size);
+	*/
 }
 
 int loadWave(char* filename)
@@ -85,7 +87,7 @@ int loadWave(char* filename)
 
 	if (in != NULL)
 	{		
-		printf("Reading %s...\n",filename);
+		//printf("Reading %s...\n",filename);
 
 		fread(chunkID, 1, 4, in);
 		fread(&chunkSize, 1, 4, in);
@@ -125,7 +127,7 @@ int loadWave(char* filename)
 		float scaledSample;
 		while(fread(&sample, 1, bytesPerSample, in) == bytesPerSample)
 		{	
-			scaledSample = (float) sample/32767/80;
+			scaledSample = (float) sample/32767/32;
 			data[i++] = scaledSample;
 			//printf("%lf ", scaledSample);
 			//printf("%lf ", data[i-1]);
@@ -134,7 +136,7 @@ int loadWave(char* filename)
 		}
 		
 		fclose(in);
-		printf("Closing %s...\n",filename);
+		//printf("Closing %s...\n",filename);
 	}
 	else
 	{
@@ -261,6 +263,32 @@ int saveWave(char* filename)
 	return 1;
 }
 
+/**
+	This method checks that the "OptimizedAudio.wav" data and the 
+	"UnoptimizedAudio.wav" are at least relatively the same.
+ */
+int compareOutputs()
+{
+	float* optimizedData;
+	float* unoptimizedData;
+	
+	/* Read Optimized Data */
+	char* filename = "OptimizedAudio.wav";
+	if(loadWave(filename))
+		print();
+	optimizedData = data;
+	
+	/* Read Unoptimized Data */
+	filename = "UnoptimizedAudio.wav";
+	if(loadWave(filename))
+		print();
+	unoptimizedData = data;
+	
+	
+	
+	return 1;
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -271,13 +299,17 @@ int main(int argc, char* argv[])
 	float seconds;
 	
 	
-	
+	clock_t readTime = clock(); 
 	char* filename = "GuitarDry.wav";
 	if(loadWave(filename))
 		print();
 		
 	dryData = data;	
 	dryDataSize = subChunk2Size/2; //Size of the data (number of entries)  = chunk size /numSamples (2)
+	
+	end = clock();
+	seconds = (float)(end - readTime) / CLOCKS_PER_SEC;
+	printf("\nReading Dry Sound Time: %.4f(s)", seconds);
 	
 	
 	/* 
@@ -315,12 +347,17 @@ int main(int argc, char* argv[])
 	/* ------------------------------------------------------------------------------------- */
 	/* Impulse Response Stuff */
 	
+	readTime = clock(); 
 	filename = "BIG_HALL_E001_M2S.wav";
 	if(loadWave(filename))
 		print();
 		
 	irData = data;
 	irDataSize = subChunk2Size/2; //Size of the data = chunk size /numSamples (2)
+
+	end = clock();
+	seconds = (float)(end - readTime) / CLOCKS_PER_SEC;
+	printf("\nReading Impulse Response Time: %.4f(s)", seconds);
 	
 
 	/* 
@@ -361,20 +398,16 @@ int main(int argc, char* argv[])
 	/* 
 		Fast convolution 
 	*/
-	
-	//Already have the double array of dryData right here 
-	
-	/* The FFT version of dryData is now in dubDryData */
-	
-	
 	clock_t convolutionTime = clock(); 
 	
+	/* Meastures FFT time for the dry data */
 	clock_t fftTime = clock();
 	four1(dubDryData-1, sizeOfDubDry/2, 1);
 	end = clock();
 	seconds = (float)(end - fftTime) / CLOCKS_PER_SEC;
 	printf("\n\tFFT Dry Data Time: %.4f(s)", seconds);
 	
+	/* Measures FFT time for IR data */
 	fftTime = clock();
 	four1(dubIRData-1, sizeOfDubDry/2, 1);
 	end = clock();
@@ -382,9 +415,12 @@ int main(int argc, char* argv[])
 	printf("\n\tFFT Impulse Response Data Time: %.4f(s)", seconds);
 	
 	
-		/* All the numbers seem to be fine up to here */
-
+	/* All the numbers seem to be fine up to here */
 	double* resultDubData = (double*) malloc(sizeof(double)* sizeOfDubDry);
+
+	
+	/* Measures frequency domain covolution time */
+	clock_t convolvTime = clock();
 	
 	//Now have the result data FFT
 	for(int k = 0;k<sizeOfDubDry;k+=2)
@@ -395,13 +431,21 @@ int main(int argc, char* argv[])
 		resultDubData[k+1] = (dubDryData[k+1]*dubIRData[k]) + (dubDryData[k]*dubIRData[k+1]) ;
 	}
 	
-	//Now have it back in time domain
-	four1(resultDubData-1, sizeOfDubDry/2, -1);
+	end = clock();
+	seconds = (float)(end - convolvTime) / CLOCKS_PER_SEC;
+	printf("\n\tFrequency Domain Convolution Time: %.4f(s)", seconds);
 	
+	
+	//Now have it back in time domain
+	clock_t ifftTime = clock();
+	four1(resultDubData-1, sizeOfDubDry/2, -1);
+	end = clock();
+	seconds = (float)(end - ifftTime) / CLOCKS_PER_SEC;
+	printf("\n\tIFFT on convoluted data (frequency domain) Time: %.4f(s)", seconds);
 	
 	end = clock();
 	seconds = (float)(end - convolutionTime) / CLOCKS_PER_SEC;
-	printf("\nTime to finish FFT x2 and Convolution: %.4f(s)", seconds);
+	printf("\nTime to finish FFT x2, IFFT x1 and Convolution: %.4f(s)", seconds);
 	
 	free(resultData);
 	
@@ -416,11 +460,14 @@ int main(int argc, char* argv[])
 	//Now we can write it to the wav file
 	
 
-	saveWave("out.wav");
+	saveWave("OptimizedAudio.wav");
 	free(data);
 	
 	end = clock();
 	seconds = (float)(end - totalTime) / CLOCKS_PER_SEC;
 	printf("\nOverall Run time: %.4f(s)", seconds);
+	
+	int passed = compareOutputs();
+	print("HIIIII %d ", passed);
 	
 }

@@ -349,6 +349,6 @@ int main(int argc, char* argv[])
 	
 	
 
-	saveWave("unop.wav");
+	saveWave("UnoptimizedAudio.wav");
 	free(data);
 }
