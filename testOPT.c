@@ -233,11 +233,14 @@ int saveWave(char* filename)
 		int sampleCount = sizeOfResult;
 		//int sampleCount =  subChunk2Size / bytesPerSample;
 		
+		int temp;
 		for(int i=0; i<sampleCount; ++i)
 		{			
 			float MAX_VAL = 32767.f;
 			
+			temp = resultData[i];
 			
+			/*
 			//scale
 			if(resultData[i] > 1)
 				resultData[i] = 1;
@@ -245,10 +248,17 @@ int saveWave(char* filename)
 				resultData[i] = -1;	
 
 			resultData[i] *= MAX_VAL;
+			*/
 			
-			//write to file
-			short sample = (short) resultData[i];
-			fwrite(&sample, 1, bytesPerSample, out);
+			if(temp > 1)
+				temp = 1;
+			else if(temp < -1)
+				temp = -1;	
+
+			resultData[i] *= MAX_VAL;
+			
+			
+			
 		}		
 		
 		//clean up
@@ -450,10 +460,15 @@ int main(int argc, char* argv[])
 		dubIRData[j] = 0;
 	}
 	
+	
+	
+	
 	/* ------------------------------------------------------------------------------------- */
 	/* Data array for the convolution to fill */
-	sizeOfResult = (sizeOfResult/2) -1; //Size of result = (chuck size dry + chunk size)/2 then subtract 1
 
+	//sizeOfResult = (sizeOfResult/2) -1; //Size of result = (chuck size dry + chunk size)/2 then subtract 1
+	sizeOfResult>>2;
+	sizeOfResult--;
 	
 	/* 
 		Fast convolution 
