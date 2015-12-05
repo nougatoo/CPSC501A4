@@ -39,6 +39,9 @@ float* data;
 float* dryData;
 float* irData;
 float* resultData;
+
+char* testFile1;
+char* testFile2;
 /*  CONSTANTS  ***************************************************************/
 
 /*  Test tone frequency in Hz  */
@@ -233,32 +236,133 @@ int saveWave(char* filename)
 		int sampleCount = sizeOfResult;
 		//int sampleCount =  subChunk2Size / bytesPerSample;
 		
-		int temp;
+		float temp;
+		float MAX_VAL = 32767.f;
+		
 		for(int i=0; i<sampleCount; ++i)
-		{			
-			float MAX_VAL = 32767.f;
-			
+		{						
 			temp = resultData[i];
-			
-			/*
-			//scale
-			if(resultData[i] > 1)
-				resultData[i] = 1;
-			else if(resultData[i] < -1)
-				resultData[i] = -1;	
 
-			resultData[i] *= MAX_VAL;
-			*/
-			
 			if(temp > 1)
 				temp = 1;
 			else if(temp < -1)
 				temp = -1;	
+		
+			temp *= MAX_VAL;
+			
+			//write to file
+			short sample = (short) temp;
+			fwrite(&sample, 1, bytesPerSample, out);
+			
+			i++;
+			temp = resultData[i];
+			if(temp > 1)
+				temp = 1;
+			else if(temp < -1)
+				temp = -1;	
+			temp *= MAX_VAL;
+			//write to file
+			sample = (short) temp;
+			fwrite(&sample, 1, bytesPerSample, out);
+			
+			i++;
+			temp = resultData[i];
+			if(temp > 1)
+				temp = 1;
+			else if(temp < -1)
+				temp = -1;	
+			temp *= MAX_VAL;
+			//write to file
+			sample = (short) temp;
+			fwrite(&sample, 1, bytesPerSample, out);
 
-			resultData[i] *= MAX_VAL;
-			
-			
-			
+			i++;
+			temp = resultData[i];
+			if(temp > 1)
+				temp = 1;
+			else if(temp < -1)
+				temp = -1;	
+			temp *= MAX_VAL;
+			//write to file
+			sample = (short) temp;
+			fwrite(&sample, 1, bytesPerSample, out);
+
+			i++;
+			temp = resultData[i];
+			if(temp > 1)
+				temp = 1;
+			else if(temp < -1)
+				temp = -1;	
+			temp *= MAX_VAL;
+			//write to file
+			sample = (short) temp;
+			fwrite(&sample, 1, bytesPerSample, out);
+
+			i++;
+			temp = resultData[i];
+			if(temp > 1)
+				temp = 1;
+			else if(temp < -1)
+				temp = -1;	
+			temp *= MAX_VAL;
+			//write to file
+			sample = (short) temp;
+			fwrite(&sample, 1, bytesPerSample, out);
+
+			i++;
+			temp = resultData[i];
+			if(temp > 1)
+				temp = 1;
+			else if(temp < -1)
+				temp = -1;	
+			temp *= MAX_VAL;
+			//write to file
+			sample = (short) temp;
+			fwrite(&sample, 1, bytesPerSample, out);
+
+			i++;
+			temp = resultData[i];
+			if(temp > 1)
+				temp = 1;
+			else if(temp < -1)
+				temp = -1;	
+			temp *= MAX_VAL;
+			//write to file
+			sample = (short) temp;
+			fwrite(&sample, 1, bytesPerSample, out);
+
+			i++;
+			temp = resultData[i];
+			if(temp > 1)
+				temp = 1;
+			else if(temp < -1)
+				temp = -1;	
+			temp *= MAX_VAL;
+			//write to file
+			sample = (short) temp;
+			fwrite(&sample, 1, bytesPerSample, out);
+
+			i++;
+			temp = resultData[i];
+			if(temp > 1)
+				temp = 1;
+			else if(temp < -1)
+				temp = -1;	
+			temp *= MAX_VAL;
+			//write to file
+			sample = (short) temp;
+			fwrite(&sample, 1, bytesPerSample, out);
+
+			i++;
+			temp = resultData[i];
+			if(temp > 1)
+				temp = 1;
+			else if(temp < -1)
+				temp = -1;	
+			temp *= MAX_VAL;
+			//write to file
+			sample = (short) temp;
+			fwrite(&sample, 1, bytesPerSample, out);			
 		}		
 		
 		//clean up
@@ -275,8 +379,7 @@ int saveWave(char* filename)
 }
 
 /**
-	This method checks that the "OptimizedAudio.wav" data and the 
-	"UnoptimizedAudio.wav" are at least relatively the same.
+	This function checks that two audio files are roughtly the same
  */
 int compareOutputs()
 {
@@ -287,16 +390,14 @@ int compareOutputs()
 	scaler = 1;
 	
 	/* Read Optimized Data */
-	char* filename = "OptimizedAudio.wav";
-	if(loadWave(filename))
+	if(loadWave(testFile1))
 		print();
 	optimizedData = data;
 	
 	printf("\n%d ", subChunk2Size/2);
 	
-	/* Read Unoptimized Data */
-	filename = "UnoptimizedAudio.wav";
-	if(loadWave(filename))
+	/* Read File Data */
+	if(loadWave(testFile2))
 		print();
 	unoptimizedData = data;
 	
@@ -308,40 +409,18 @@ int compareOutputs()
 		
 	for(int i =0;i<subChunk2Size/2;i++)
 	{
-		//printf("\n%lf ", optimizedData[i]*80*32767);
-		//printf("\n%lf ", unoptimizedData[i]*8*32767/10);
-		//printf("\n");
-		
-		//if((unoptimizedData[i] != 0) && (optimizedData[i] != 0))
-		//{
-		temp1 = optimizedData[i]*80*32767;
-		temp2 = unoptimizedData[i]*8*32767/10;
+		temp1 = optimizedData[i]*32767
+		temp2 = unoptimizedData[i]*32767;
 			
 		//temp1 is between 95% and 105% of the temp2
-		if( ((temp1<(temp2*1.10)) && (temp1>(temp2*0.90))) || (temp1 == temp2))
+		if( ((temp1<(temp2*1.05)) && (temp1>(temp2*0.95))) || (temp1 == temp2))
 		{
 			successCount++;
-			//printf("Hello\n");
 		}
-		else if( (temp2<(temp1*1.10) && (temp2>(temp1*0.90))) || (temp1 == temp2))
+		else if( (temp2<(temp1*1.05) && (temp2>(temp1*0.95))) || (temp1 == temp2))
 		{
 			successCount++;
-			//printf("Hello2\n");
 		}
-				
-				/*
-			if( optimizedData[i]*80*32767 != unoptimizedData[i]*8*32767/10 )
-				failCount++;
-			else if( optimizedData[i]*80*32767 != (unoptimizedData[i]*8/10*32767-1))
-				failCount++;
-			else if( optimizedData[i]*80*32767 != (unoptimizedData[i]*8/10*32767+1))
-				failCount++;
-			else if( (optimizedData[i]-1)*80*32767 != unoptimizedData[i]*8/10*32767)
-				failCount++;
-			else if( (optimizedData[i]+1)*80*32767 != unoptimizedData[i]*8/10*32767)
-				failCount++;	
-				*/
-		//}
 	}
 	
 	
@@ -465,8 +544,6 @@ int main(int argc, char* argv[])
 	
 	/* ------------------------------------------------------------------------------------- */
 	/* Data array for the convolution to fill */
-
-	//sizeOfResult = (sizeOfResult/2) -1; //Size of result = (chuck size dry + chunk size)/2 then subtract 1
 	sizeOfResult>>2;
 	sizeOfResult--;
 	
@@ -533,7 +610,6 @@ int main(int argc, char* argv[])
 	}
 	
 	//Now we can write it to the wav file
-	
 	convolutionTime = clock();
 	saveWave("OptimizedAudio.wav");
 	
@@ -542,13 +618,10 @@ int main(int argc, char* argv[])
 	printf("\nWriting Result To File Time: %.4f(s)", seconds);
 	
 	free(data);
-	
-	
+		
 	end = clock();
 	seconds = (float)(end - totalTime) / CLOCKS_PER_SEC;
 	printf("\n\nOverall Run time: %.4f(s)", seconds);
-	
-	int passed = compareOutputs();
-	print("HIIIII %d ", passed);
+;
 	
 }
