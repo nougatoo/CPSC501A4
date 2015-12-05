@@ -33,6 +33,7 @@ int subChunk2Size;
 int dryDataSize;
 int irDataSize;
 int sizeOfResult;
+int scaler;
 
 float* data;
 float* dryData;
@@ -127,7 +128,7 @@ int loadWave(char* filename)
 		float scaledSample;
 		while(fread(&sample, 1, bytesPerSample, in) == bytesPerSample)
 		{	
-			scaledSample = (float) sample/32767/32;
+			scaledSample = (float) sample/32767/scaler;
 			data[i++] = scaledSample;
 			//printf("%lf ", scaledSample);
 			//printf("%lf ", data[i-1]);
@@ -271,6 +272,9 @@ int compareOutputs()
 {
 	float* optimizedData;
 	float* unoptimizedData;
+	int successCount = 0;
+	
+	scaler = 1;
 	
 	/* Read Optimized Data */
 	char* filename = "OptimizedAudio.wav";
@@ -278,13 +282,60 @@ int compareOutputs()
 		print();
 	optimizedData = data;
 	
+	printf("\n%d ", subChunk2Size/2);
+	
 	/* Read Unoptimized Data */
 	filename = "UnoptimizedAudio.wav";
 	if(loadWave(filename))
 		print();
 	unoptimizedData = data;
 	
+	printf("\n%d ", subChunk2Size/2);
 	
+	
+	float temp1;
+	float temp2;
+		
+	for(int i =0;i<subChunk2Size/2;i++)
+	{
+		//printf("\n%lf ", optimizedData[i]*80*32767);
+		//printf("\n%lf ", unoptimizedData[i]*8*32767/10);
+		//printf("\n");
+		
+		//if((unoptimizedData[i] != 0) && (optimizedData[i] != 0))
+		//{
+		temp1 = optimizedData[i]*80*32767;
+		temp2 = unoptimizedData[i]*8*32767/10;
+			
+		//temp1 is between 95% and 105% of the temp2
+		if( ((temp1<(temp2*1.10)) && (temp1>(temp2*0.90))) || (temp1 == temp2))
+		{
+			successCount++;
+			//printf("Hello\n");
+		}
+		else if( (temp2<(temp1*1.10) && (temp2>(temp1*0.90))) || (temp1 == temp2))
+		{
+			successCount++;
+			//printf("Hello2\n");
+		}
+				
+				/*
+			if( optimizedData[i]*80*32767 != unoptimizedData[i]*8*32767/10 )
+				failCount++;
+			else if( optimizedData[i]*80*32767 != (unoptimizedData[i]*8/10*32767-1))
+				failCount++;
+			else if( optimizedData[i]*80*32767 != (unoptimizedData[i]*8/10*32767+1))
+				failCount++;
+			else if( (optimizedData[i]-1)*80*32767 != unoptimizedData[i]*8/10*32767)
+				failCount++;
+			else if( (optimizedData[i]+1)*80*32767 != unoptimizedData[i]*8/10*32767)
+				failCount++;	
+				*/
+		//}
+	}
+	
+	
+	printf("\n%d ", successCount);
 	
 	return 1;
 }
@@ -296,8 +347,9 @@ int main(int argc, char* argv[])
 	//Used to measure overall time from read to write
 	clock_t totalTime = clock(); 
 	clock_t end;
+	clock_t iTime;
 	float seconds;
-	
+	scaler = 80;
 	
 	clock_t readTime = clock(); 
 	char* filename = "GuitarDry.wav";
@@ -316,17 +368,25 @@ int main(int argc, char* argv[])
 		Creating the double array.
 		The size needs to be a power of two, and it needs to be padded with zeros 
 	*/
+
+	double test;
+	iTime = clock();	
 	
-	//Need to find the next power of 2 that is larger than dryDataSize 
-	double nextPowTwoDry = 2;
+	int sizeOfDubDry;
+	int n;
 	
-	while(nextPowTwoDry < dryDataSize)
-	{
-		nextPowTwoDry = nextPowTwoDry*2;
-	}
+	n= dryDataSize;
 	
-	int sizeOfDubDry = nextPowTwoDry*2;
+	n--;
+	n = n | n>>1;	
+	n = n | n>>2;
+	n = n | n>>4;
+	n = n | n>>8;
+	n = n | n>>16;
+	n++;
 	
+	sizeOfDubDry = n*2;
+
 	double* dubDryData = (double*) malloc(sizeof(double) * sizeOfDubDry);
 	//Traverse through the dry data float array
 	int i;
@@ -459,13 +519,19 @@ int main(int argc, char* argv[])
 	
 	//Now we can write it to the wav file
 	
-
+	convolutionTime = clock();
 	saveWave("OptimizedAudio.wav");
+	
+	end = clock();
+	seconds = (float)(end - convolutionTime) / CLOCKS_PER_SEC;
+	printf("\nWriting Result To File Time: %.4f(s)", seconds);
+	
 	free(data);
+	
 	
 	end = clock();
 	seconds = (float)(end - totalTime) / CLOCKS_PER_SEC;
-	printf("\nOverall Run time: %.4f(s)", seconds);
+	printf("\n\nOverall Run time: %.4f(s)", seconds);
 	
 	int passed = compareOutputs();
 	print("HIIIII %d ", passed);

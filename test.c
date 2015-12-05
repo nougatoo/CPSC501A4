@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <time.h>
 #include "fft.c"
 
 char chunkID[4];
@@ -53,6 +54,7 @@ size_t fwriteShortLSB(short int data, FILE *stream);
 
 void print()
 {
+/*
 	printf("\n============= HEADER INFO =============\n", chunkID);
 	printf(" chunkID:%s\n", chunkID);
 	printf(" chunkSize:%d\n", chunkSize);
@@ -67,6 +69,7 @@ void print()
 	printf(" bitsPerSample:%d\n", bitsPerSample);
 	printf(" subChunk2ID:%s\n", subChunk2ID);
 	printf(" subChunk2Size:%d\n", subChunk2Size);
+	*/
 }
 
 int loadWave(char* filename)
@@ -75,7 +78,7 @@ int loadWave(char* filename)
 
 	if (in != NULL)
 	{		
-		printf("Reading %s...\n",filename);
+		//printf("Reading %s...\n",filename);
 
 		fread(chunkID, 1, 4, in);
 		fread(&chunkSize, 1, 4, in);
@@ -115,7 +118,7 @@ int loadWave(char* filename)
 		float scaledSample;
 		while(fread(&sample, 1, bytesPerSample, in) == bytesPerSample)
 		{	
-			scaledSample = (float) sample/32767/8;
+			scaledSample = (float) sample/32767/10;
 			data[i++] = scaledSample;
 			//printf("%lf ", scaledSample);
 			//printf("%lf ", data[i-1]);
@@ -124,7 +127,7 @@ int loadWave(char* filename)
 		}
 		
 		fclose(in);
-		printf("Closing %s...\n",filename);
+		//printf("Closing %s...\n",filename);
 	}
 	else
 	{
@@ -169,8 +172,7 @@ void convolve(float x[], int N, float h[], int M, float y[], int P)
 
   /*  Do the convolution  */
   /*  Outer loop:  process each input value x[n] in turn  */
-  	float max = 0;
-	float min = 0;
+
   for (n = 0; n < N; n++) {
     /*  Inner loop:  process x[n] with each sample of h[]  */
     for (m = 0; m < M; m++)
@@ -187,7 +189,7 @@ int saveWave(char* filename)
 
 	if (out != NULL)
 	{		
-		printf("Writing %s...\n",filename);
+		//printf("Writing %s...\n",filename);
 
 		fwrite(chunkID, 1, 4, out);
 		fwrite(&chunkSize, 1, 4, out);
@@ -228,9 +230,16 @@ int saveWave(char* filename)
 			
 			//scale
 			if(resultData[i] > 1)
+			{
 				resultData[i] = 1;
+				printf("\n Scale more\n");
+				
+			}
 			else if(resultData[i] < -1)
+			{
 				resultData[i] = -1;	
+				printf("\n Scale more\n");
+			}
 
 			resultData[i] *= MAX_VAL;
 			
@@ -242,7 +251,7 @@ int saveWave(char* filename)
 		//clean up
 		free(resultData);
 		fclose(out);
-		printf("Closing %s...\n",filename);
+		//printf("Closing %s...\n",filename);
 	}
 	else
 	{
@@ -256,7 +265,12 @@ int saveWave(char* filename)
 int main(int argc, char* argv[])
 {
 	//char* filename = argv[1];
+	clock_t totalTime = clock();
+	clock_t end;
+	clock_t iTime;
+	float seconds;
 	
+	iTime = clock();
 	char* filename = "GuitarDry.wav";
 	if(loadWave(filename))
 		print();
@@ -264,10 +278,14 @@ int main(int argc, char* argv[])
 	dryData = data;	
 	dryDataSize = subChunk2Size/2; //Size of the data (number of entries)  = chunk size /numSamples (2)
 	
+	end = clock();
+	seconds = (float)(end - iTime) / CLOCKS_PER_SEC;
+	printf("\nReading Dry Sound Time: %.4f(s)", seconds);
+	
 	/* 
 		Creating the double array.
 		The size needs to be a power of two, and it needs to be padded with zeros 
-	*/
+	
 	
 	//Need to find the next power of 2 that is larger than dryDataSize 
 	double nextPowTwoDry = 2;
@@ -288,16 +306,18 @@ int main(int argc, char* argv[])
 	}
 	
 	i++;
-	/* Adds a zero padding to the rest of the data  array */
+	/* Adds a zero padding to the rest of the data  array 
 	for(i;i<sizeOfDubDry;i++)
 	{
 		dubDryData[i] = 0;
 	}
 	
-	
+	*/
 	
 	/* ------------------------------------------------------------------------------------- */
 	/* Impulse Response Stuff */
+	
+	iTime = clock();
 	
 	filename = "BIG_HALL_E001_M2S.wav";
 	if(loadWave(filename))
@@ -305,6 +325,10 @@ int main(int argc, char* argv[])
 		
 	irData = data;
 	irDataSize = subChunk2Size/2; //Size of the data = chunk size /numSamples (2)
+	
+	end = clock();
+	seconds = (float)(end - iTime) / CLOCKS_PER_SEC;
+	printf("\nReading Impulse Response Time: %.4f(s)", seconds);
 	
 	/* 
 		Creating the double array.
@@ -320,7 +344,7 @@ int main(int argc, char* argv[])
 		nextPowTwoDryIR = nextPowTwoDryIR*2;
 	}
 	*/
-	
+	/*
 	double* dubIRData = (double*) malloc(sizeof(double)* sizeOfDubDry);
 	//Traverse through the dry data float array
 	int j;
@@ -330,25 +354,40 @@ int main(int argc, char* argv[])
 	}
 	
 	j++;
-	/* Adds a zero padding to the rest of the data  array */
+	/* Adds a zero padding to the rest of the data  array 
 	for(j;j<sizeOfDubDry;j++)
 	{
 		dubIRData[j] = 0;
 	}
 	
 	
-	
+	*/
 	
 	/* ------------------------------------------------------------------------------------- */
 	/* Data array for the convolution to fill */
 	sizeOfResult = (sizeOfResult/2) -1; //Size of result = (chuck size dry + chunk size)/2 then subtract 1
 
+	iTime = clock();
 	/* Slow convolution */
 	resultData = (float*) malloc(sizeof(float) * sizeOfResult);
 	convolve(dryData, dryDataSize, irData, irDataSize, resultData, sizeOfResult);
 	
+	end = clock();
+	seconds = (float)(end - iTime) / CLOCKS_PER_SEC;
+	printf("\nTime Domain Convolution Time: %.4f(s)", seconds);
+	
 	
 
+	
+	iTime = clock();
 	saveWave("UnoptimizedAudio.wav");
+	
+	end = clock();
+	seconds = (float)(end - iTime) / CLOCKS_PER_SEC;
+	printf("\nWriting Result To File Time: %.4f(s)", seconds);
 	free(data);
+	
+	end = clock();
+	seconds = (float)(end - totalTime) / CLOCKS_PER_SEC;
+	printf("\n\nOverall Run time: %.4f(s)", seconds);
 }
