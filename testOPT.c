@@ -363,6 +363,7 @@ int saveWave(char* filename)
 			//write to file
 			sample = (short) temp;
 			fwrite(&sample, 1, bytesPerSample, out);			
+			
 		}		
 		
 		//clean up
@@ -409,7 +410,7 @@ int compareOutputs()
 		
 	for(int i =0;i<subChunk2Size/2;i++)
 	{
-		temp1 = optimizedData[i]*32767
+		temp1 = optimizedData[i]*32767;
 		temp2 = unoptimizedData[i]*32767;
 			
 		//temp1 is between 95% and 105% of the temp2
@@ -432,7 +433,7 @@ int compareOutputs()
 
 int main(int argc, char* argv[])
 {
-	//char* filename = argv[1];
+	char* filename = argv[1];
 	//Used to measure overall time from read to write
 	clock_t totalTime = clock(); 
 	clock_t end;
@@ -441,7 +442,7 @@ int main(int argc, char* argv[])
 	scaler = 80;
 	
 	clock_t readTime = clock(); 
-	char* filename = "GuitarDry.wav";
+	//char* filename = "GuitarDry.wav";
 	if(loadWave(filename))
 		print();
 		
@@ -496,8 +497,9 @@ int main(int argc, char* argv[])
 	/* ------------------------------------------------------------------------------------- */
 	/* Impulse Response Stuff */
 	
+	filename = argv[2];
 	readTime = clock(); 
-	filename = "BIG_HALL_E001_M2S.wav";
+	//filename = "BIG_HALL_E001_M2S.wav";
 	if(loadWave(filename))
 		print();
 		
@@ -512,16 +514,6 @@ int main(int argc, char* argv[])
 	/* 
 		Creating the double array.
 		The size needs to be a power of two, and it needs to be padded with zeros 
-	*/
-	
-	//Need to find the next power of 2 that is larger than dryDataSize 
-	/*
-	double nextPowTwoDryIR = 2;
-	
-	while(nextPowTwoDryIR < irDataSize)
-	{
-		nextPowTwoDryIR = nextPowTwoDryIR*2;
-	}
 	*/
 	
 	double* dubIRData = (double*) malloc(sizeof(double)* sizeOfDubDry);
@@ -539,13 +531,12 @@ int main(int argc, char* argv[])
 		dubIRData[j] = 0;
 	}
 	
-	
-	
-	
 	/* ------------------------------------------------------------------------------------- */
 	/* Data array for the convolution to fill */
-	sizeOfResult>>2;
+	sizeOfResult = sizeOfResult>>1;
 	sizeOfResult--;
+	
+	
 	
 	/* 
 		Fast convolution 
@@ -611,7 +602,7 @@ int main(int argc, char* argv[])
 	
 	//Now we can write it to the wav file
 	convolutionTime = clock();
-	saveWave("OptimizedAudio.wav");
+	saveWave(argv[3]);
 	
 	end = clock();
 	seconds = (float)(end - convolutionTime) / CLOCKS_PER_SEC;
@@ -622,6 +613,5 @@ int main(int argc, char* argv[])
 	end = clock();
 	seconds = (float)(end - totalTime) / CLOCKS_PER_SEC;
 	printf("\n\nOverall Run time: %.4f(s)", seconds);
-;
 	
 }
